@@ -14,6 +14,7 @@
 		const JOB_START_PADDING			= 5;		// 5 pixels below the header for row 1	
 		const JOB_END_PADDING			= 0;		// 0 pixels below the bottom row for the footer
 		const JOB_ROW_HEIGHT			= 10;		// 10 pixels per job row
+		const JOB_ROW_TEXT_WIDTH		= 84;		// from start of text to level numbers
 
 		const FONT_FILENAME				= 'images/xfont.ttf';
 		const FONT_SIZE					= 6;		// font size in points (used for imagettftext)
@@ -89,8 +90,63 @@
 			$innerSize	= $size['h'] - (static::$_spriteParts['header']['h'] + static::$_spriteParts['footer']['h']);
 			$this->_placeSprite("inner",     0, static::$_spriteParts['header']['h'], null, $innerSize);
 
-			$this->_drawText( 11,  7,  "ABCDEFGhijklmno0123456789");
+			$this->_drawText( 11,  7,  $this->_character->Character->Name);
+			
+			$rightAlign	= strlen($this->_character->Character->Server) * static::FONT_LETTER_WIDTH;
+			$this->_drawText( $size['w'] - 10 - $rightAlign,  7,  $this->_character->Character->Server, "blue");
+			$this->_placeSprite("home", $size['w'] - 20 - $rightAlign, 8);
+
+
+
+			$initialY	= static::$_spriteParts['header']['h'] + static::JOB_START_PADDING;
+
+			$this->_drawRoles(  16, $initialY, ['tank', 'healer', 'dps']);
+			$this->_drawRoles( 138, $initialY, ['hand', 'land']);
+
 		}
+
+
+		protected function _drawRoles($startX, $startY, $roles) {
+			$seperator	= false;
+			$x			= $startX;
+			$y			= $startY;
+
+			foreach ($roles as $role) {
+				if ($seperator) {
+					$this->_placeSprite("seperator", $x - 9, $y + 2);
+					$y	+= static::JOB_ROW_HEIGHT;
+					$seperator	= false;
+				}
+
+				foreach ($this->_roles[$role] as $job) {
+					imagefilledrectangle($this->_image, $x - 6, $y - ($seperator ? 2 : 0), $x - 4, $y + static::JOB_ROW_HEIGHT - 3, $this->_getColor("role$role"));
+					$this->_drawText( $x, $y, $job['name']);
+
+					$textWidth	= (strlen($job['name']) * static::FONT_LETTER_WIDTH);
+					for ($dotsX = static::JOB_ROW_TEXT_WIDTH - static::FONT_LETTER_WIDTH + 1; $dotsX > $textWidth; $dotsX -= static::FONT_LETTER_WIDTH) {
+						$this->_placeSprite("dots", $x + $dotsX, $y);
+					}
+
+					$levelText	= sprintf("%2d", $job['level']);
+					$tempX		= $x + static::JOB_ROW_TEXT_WIDTH + 1;
+					$numW		= static::$_spriteParts['num0']['w'] + 1;
+					$nums		= ($job['level'] == 90 ? "numg" : "num");
+					for ($i = 0; $i <= 1; $i++) {
+						if ($levelText[$i] === " ") continue;
+						$this->_placeSprite($nums . $levelText[$i], $tempX + $i * $numW, $y);
+					}
+
+					$y			+= static::JOB_ROW_HEIGHT;
+					$seperator	= true;
+
+				}
+			}
+
+		}
+
+
+
+
 
 		public function save($filename) {
 			imagepng($this->_image, $filename);
@@ -106,6 +162,9 @@
 			imagefilledrectangle($this->_image, 0, 0, $width, $height, imagecolorallocatealpha($this->_image, 255, 0, 255, 127));
 		}
 
+		/**
+		 * Draws text onto the image. Origin point is top-left of where text should go
+		 */
 		protected function _drawText($x, $y, $text, $tColor = null) {
 			$color	= $this->_getColor($tColor);
 			
@@ -118,7 +177,7 @@
 				return imagecolorallocate($this->_image, $color[0], $color[1], $color[2]);
 
 			} elseif (is_string($color)) {
-				if (!isset(stati::$_colors[$color])) {
+				if (!isset(static::$_colors[$color])) {
 					throw new \Exception("invalid color string: $color");
 				}
 				$color	= static::$_colors[$color];
@@ -158,17 +217,20 @@
 			
 			static::_addSprite("header",       0,   0, 250,  19);
 			static::_addSprite("inner",        0,  20, 250,   3);
-			static::_addSprite("footer",       0,  24, 250,   6);
+			static::_addSprite("footer",       0,  25, 250,   5);
 			
 			static::_addSprite("seperator",    0,  31, 114,   3);
 			
 			for ($i = 0; $i <= 9; $i++) {
-				static::_addSprite("num$i", 0 + 9 * $i, 35, 8, 7);
+				static::_addSprite("num{$i}", 0 + 9 * $i, 35, 8, 7);
+				static::_addSprite("numg{$i}", 0 + 9 * $i, 43, 8, 7);
 			}
+			static::_addSprite("dots", 90, 35, 5, 7);
+			static::_addSprite("home", 96, 35, 7, 7);
 
 			// colors for various things
 			static::$_colors['text']		= [255, 255, 255];	// white text
-			static::$_colors['blue']		= [153, 171, 255];	// light blue text
+			static::$_colors['blue']		= [153, 171, 215];	// light blue text
 			static::$_colors['roletank']	= [153, 171, 215];	// tank bar
 			static::$_colors['rolehealer']	= [177, 226, 141];	// healer bar
 			static::$_colors['roledps']		= [222, 167, 160];	// dps bar
@@ -219,8 +281,9 @@
 	
 				// Otherwise, arrange the data I guess
 				// the awkward default is because blue mage UnlockedState->ID is null
+				// also (Limited Job) why would you put that in the name, who cares
 				$jobs[$job->UnlockedState->ID ?? $job->ClassID]	= [
-					'name'		=> $job->UnlockedState->Name,
+					'name'		=> str_replace(" (Limited Job)", "", $job->UnlockedState->Name),
 					'level'		=> $job->Level,
 					'exp'		=> $job->ExpLevel,		// EXP done this level
 					'expLevel'	=> $job->ExpLevelMax,	// Total EXP for next level

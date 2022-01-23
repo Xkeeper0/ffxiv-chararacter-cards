@@ -5,9 +5,13 @@
 	require 'charsheet.php';
 
 	throw_warnings(true);
+	$api = new \XIVAPI\XIVAPI();
 
+	$char	= $api->character->get(14531375);
+	file_put_contents("14531375.txt", serialize($char));
+	
 
-	$char	= unserialize(file_get_contents("cached.txt"));
+//	$char	= unserialize(file_get_contents("cached.txt"));
 	$x = new CharacterSheet($char);
 
 	$x->generate();
