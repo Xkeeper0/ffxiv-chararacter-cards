@@ -1,0 +1,10 @@
+*.db
+*.tmp
+sandbox*
+*.bak
+*.log
+*.7z
+vendor/
+composer.phar
+config.php
+
