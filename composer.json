@@ -1,0 +1,5 @@
+{
+    "require": {
+        "xivapi/xivapi-php": "^1.6"
+    }
+}
