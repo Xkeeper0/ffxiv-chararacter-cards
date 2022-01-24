@@ -5,10 +5,18 @@
 	require 'charsheet.php';
 
 	throw_warnings(true);
-	$api = new \XIVAPI\XIVAPI();
+	$api = new \XIVAPI\XIVAPI();	// @TODO add api key
 
-	$char	= $api->character->get(14531375);
-	file_put_contents("14531375.txt", serialize($char));
+	// @TODO not an exact search; "Aa Bb" will also return "Xxxxaa Bbzzzz". oops
+	$search	= $api->character->search("Naii Nai", "Siren");
+	$id		= $search->Results[0]->ID;
+
+	if (!$id) {
+		print_r($search);
+		die("no char found\n");
+	}
+	$char	= $api->character->get($id);
+//	file_put_contents("$id.txt", serialize($char));
 	
 
 //	$char	= unserialize(file_get_contents("cached.txt"));
